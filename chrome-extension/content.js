@@ -222,28 +222,32 @@
       location.hostname.includes('chatgpt.com') ||
       location.hostname.includes('chat.openai.com');
 
-    let turns;
+    let turns = [];
     if (isChatGPT) {
-      turns = document.querySelectorAll('[data-message-author-role]');
-      if (!turns.length) {
-        turns = document.querySelectorAll('[data-turn="user"], [data-turn="assistant"]');
-      }
-      if (!turns.length) {
-        turns = document.querySelectorAll('main article, [data-testid*="conversation-turn"]');
-      }
-      if (!turns.length) {
-        turns = document.querySelectorAll(
-          '.whitespace-pre-wrap, .prose, [class*="markdown"]'
+      const candidates = [
+        () => document.querySelectorAll('main article, [data-testid*="conversation-turn"]'),
+        () => document.querySelectorAll('[data-turn="user"], [data-turn="assistant"]'),
+        () => document.querySelectorAll('[data-message-author-role], .prose, [class*="markdown"], .whitespace-pre-wrap'),
+      ];
+      for (const getNodes of candidates) {
+        const list = Array.from(getNodes());
+        // İç içe geçmiş alt elemanları ele (aynı mesajı iki kez eklememek için)
+        const topLevel = list.filter(
+          (el) => !list.some((other) => other !== el && other.contains(el))
         );
+        if (topLevel.length > turns.length) {
+          turns = topLevel;
+        }
+        if (turns.length >= 2) break;
       }
     } else {
-      turns = document.querySelectorAll('user-query, model-response');
+      turns = Array.from(document.querySelectorAll('user-query, model-response'));
       if (!turns.length) {
-        turns = document.querySelectorAll('.conversation-container');
+        turns = Array.from(document.querySelectorAll('.conversation-container'));
       }
     }
     const rootNodes = turns.length
-      ? Array.from(turns)
+      ? turns
       : [document.querySelector('main') || document.body];
 
     const themes = ['light', 'paper', 'dark'];
