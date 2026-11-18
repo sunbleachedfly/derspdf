@@ -2,7 +2,50 @@
   if (window.__derspdfInitialized) return;
   window.__derspdfInitialized = true;
 
-  function openPrintView() {
+  function blobToDataUrl(blob) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result || '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function imageToDataUrl(origImg) {
+    const src = origImg.currentSrc || origImg.src || '';
+    if (!src) return '';
+    if (src.startsWith('data:')) return src;
+
+    // 1. Canvas ile doğrudan çiz
+    try {
+      if (origImg.complete && origImg.naturalWidth > 0) {
+        const c = document.createElement('canvas');
+        c.width = origImg.naturalWidth;
+        c.height = origImg.naturalHeight;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(origImg, 0, 0);
+        const dataUrl = c.toDataURL('image/png');
+        if (dataUrl && dataUrl.length > 50) return dataUrl;
+      }
+    } catch (_) {}
+
+    // 2. fetch (oturum çerezleriyle)
+    try {
+      const resp = await fetch(src, { credentials: 'include' });
+      if (resp.ok) {
+        const blob = await resp.blob();
+        const dataUrl = await blobToDataUrl(blob);
+        if (dataUrl) return dataUrl;
+      }
+    } catch (_) {}
+
+    return src;
+  }
+
+  async function openPrintView() {
+    const floatBtn = document.getElementById('derspdf-floating-btn');
+    if (floatBtn) floatBtn.textContent = '⏳ Görseller hazırlanıyor...';
+
     const old = document.getElementById('derspdf-print-root');
     if (old) old.remove();
 
@@ -37,7 +80,7 @@
     printBtn.onclick = () => window.print();
 
     const closeBtn = document.createElement('button');
-    closeBtn.textContent = '✕ Gemini\'ye Dön';
+    closeBtn.textContent = "✕ Gemini'ye Dön";
     closeBtn.style.cssText =
       'background:#eef0f2;color:#111;border:none;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;';
     closeBtn.onclick = () => {
@@ -54,7 +97,10 @@
     bar.append(leftTitle, btnGroup);
     box.appendChild(bar);
 
-    rootNodes.forEach((node) => {
+    for (const node of rootNodes) {
+      const origImgs = Array.from(node.querySelectorAll('img'));
+      const origCanvases = Array.from(node.querySelectorAll('canvas'));
+
       const clone = node.cloneNode(true);
       clone
         .querySelectorAll(
@@ -62,22 +108,43 @@
         )
         .forEach((el) => el.remove());
 
-      clone.querySelectorAll('img').forEach((img) => {
-        img.style.maxWidth = '100%';
-        img.style.height = 'auto';
-        img.style.borderRadius = '8px';
-        img.style.margin = '10px 0';
-        img.style.display = 'block';
+      const clonedCanvases = Array.from(clone.querySelectorAll('canvas'));
+      clonedCanvases.forEach((cEl, idx) => {
+        try {
+          const origC = origCanvases[idx];
+          if (origC) {
+            const img = document.createElement('img');
+            img.src = origC.toDataURL('image/png');
+            img.style.cssText =
+              'max-width:100%;height:auto;border-radius:8px;margin:10px 0;display:block;';
+            cEl.replaceWith(img);
+          }
+        } catch (_) {}
       });
 
+      const clonedImgs = Array.from(clone.querySelectorAll('img'));
+      await Promise.all(
+        clonedImgs.map(async (cImg, idx) => {
+          const origImg = origImgs[idx];
+          if (origImg) {
+            const dataUrl = await imageToDataUrl(origImg);
+            if (dataUrl) cImg.src = dataUrl;
+          }
+          cImg.removeAttribute('loading');
+          cImg.removeAttribute('srcset');
+          cImg.style.cssText =
+            'max-width:100% !important;width:auto !important;height:auto !important;max-height:700px;border-radius:8px;margin:12px 0;display:block !important;opacity:1 !important;visibility:visible !important;';
+        })
+      );
+
       box.appendChild(clone);
-    });
+    }
 
     if (!document.getElementById('derspdf-print-style')) {
       const st = document.createElement('style');
       st.id = 'derspdf-print-style';
       st.textContent =
-        '@media print { .derspdf-no-print { display: none !important; } body { background: #fff !important; } #derspdf-print-root img, #derspdf-print-root pre, #derspdf-print-root table { break-inside: avoid; page-break-inside: avoid; } }';
+        '@media print { .derspdf-no-print { display: none !important; } body { background: #fff !important; } #derspdf-print-root img, #derspdf-print-root pre, #derspdf-print-root table { break-inside: avoid; page-break-inside: avoid; } #derspdf-print-root img { display: block !important; opacity: 1 !important; visibility: visible !important; } }';
       document.head.appendChild(st);
     }
 
@@ -87,10 +154,11 @@
     });
 
     document.body.appendChild(box);
-    setTimeout(() => window.print(), 350);
+    if (floatBtn) floatBtn.textContent = '📄 PDF Yap';
+
+    setTimeout(() => window.print(), 450);
   }
 
-  // Gemini sayfasında sağ alt köşeye küçük bir "PDF Yap" butonu ekle
   function addFloatingButton() {
     if (document.getElementById('derspdf-floating-btn')) return;
     const btn = document.createElement('button');
