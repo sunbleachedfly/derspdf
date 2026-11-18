@@ -195,14 +195,15 @@
 
   async function openPrintView() {
     const floatBtn = document.getElementById('derspdf-floating-btn');
-    if (floatBtn) floatBtn.textContent = '⏳ Görseller hazırlanıyor...';
+    if (floatBtn) floatBtn.textContent = '⏳ Hazırlanıyor...';
 
     const old = document.getElementById('derspdf-print-root');
     if (old) old.remove();
 
-    const turns = document.querySelectorAll(
-      'user-query, model-response, .conversation-container'
-    );
+    let turns = document.querySelectorAll('user-query, model-response');
+    if (!turns.length) {
+      turns = document.querySelectorAll('.conversation-container');
+    }
     const rootNodes = turns.length
       ? Array.from(turns)
       : [document.querySelector('main') || document.body];
@@ -224,7 +225,12 @@
     leftTitle.style.cssText = 'font-weight:700;font-size:16px;';
 
     const btnGroup = document.createElement('div');
-    btnGroup.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+    btnGroup.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;';
+
+    const selectAllBtn = document.createElement('button');
+    selectAllBtn.textContent = '☑️ Tümünü Kaldır';
+    selectAllBtn.style.cssText =
+      'border:1px solid rgba(128,128,128,0.3);background:transparent;color:inherit;padding:9px 12px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;';
 
     const themeBtn = document.createElement('button');
     themeBtn.style.cssText =
@@ -256,16 +262,66 @@
       applyTheme(isDark, box, bar, leftTitle, closeBtn, themeBtn);
     };
 
-    btnGroup.append(themeBtn, printBtn, closeBtn);
+    btnGroup.append(selectAllBtn, themeBtn, printBtn, closeBtn);
     bar.append(leftTitle, btnGroup);
     box.appendChild(bar);
 
     applyTheme(isDark, box, bar, leftTitle, closeBtn, themeBtn);
 
     const imgPairs = [];
+    const msgEntries = [];
+
+    function updateSelectionSummary() {
+      const selectedCount = msgEntries.filter((m) => m.checkbox.checked).length;
+      leftTitle.textContent = `∑ DersPDF (${selectedCount}/${msgEntries.length} mesaj • ${imgPairs.length} görsel)`;
+      selectAllBtn.textContent =
+        selectedCount === msgEntries.length ? '☑️ Tümünü Kaldır' : '✅ Tümünü Seç';
+    }
+
+    selectAllBtn.onclick = () => {
+      const allSelected = msgEntries.every((m) => m.checkbox.checked);
+      const nextState = !allSelected;
+      msgEntries.forEach((m) => {
+        m.checkbox.checked = nextState;
+        m.wrapper.classList.toggle('derspdf-excluded', !nextState);
+      });
+      updateSelectionSummary();
+    };
+
     for (const node of rootNodes) {
       const cloned = cloneWithShadow(node, imgPairs);
-      if (cloned) box.appendChild(cloned);
+      if (!cloned) continue;
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'derspdf-msg-wrapper';
+      wrapper.style.cssText = 'margin-bottom:18px;transition:opacity 0.15s;';
+
+      const tagName = node.tagName ? node.tagName.toLowerCase() : '';
+      const isUser = tagName === 'user-query';
+      const labelText = isUser ? '👤 Senin Mesajın' : tagName === 'model-response' ? '✨ Gemini Yanıtı' : '💬 Konuşma';
+
+      const msgHeader = document.createElement('label');
+      msgHeader.className = 'derspdf-no-print derspdf-msg-select';
+      msgHeader.style.cssText =
+        'display:inline-flex;align-items:center;gap:8px;padding:5px 11px;margin-bottom:8px;border-radius:999px;border:1px solid rgba(128,128,128,0.28);font-size:12.5px;font-weight:600;cursor:pointer;user-select:none;';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = true;
+      cb.style.cssText = 'width:16px;height:16px;accent-color:#0F5C52;cursor:pointer;margin:0;';
+
+      const lblSpan = document.createElement('span');
+      lblSpan.textContent = labelText;
+
+      cb.addEventListener('change', () => {
+        wrapper.classList.toggle('derspdf-excluded', !cb.checked);
+        updateSelectionSummary();
+      });
+
+      msgHeader.append(cb, lblSpan);
+      wrapper.append(msgHeader, cloned);
+      box.appendChild(wrapper);
+      msgEntries.push({ wrapper, checkbox: cb });
     }
 
     // Tüm görselleri bulundukları yerde base64'e çevir
@@ -292,18 +348,20 @@
       })
     );
 
-    leftTitle.textContent = `∑ DersPDF — Önizleme (${imgPairs.length} görsel)`;
+    updateSelectionSummary();
 
     if (!document.getElementById('derspdf-print-style')) {
       const st = document.createElement('style');
       st.id = 'derspdf-print-style';
       st.textContent = `
+        #derspdf-print-root .derspdf-excluded { opacity: 0.32; }
         #derspdf-print-root.derspdf-dark * { color: #f5f5f5 !important; background-color: transparent !important; border-color: #2a2a2a !important; }
+        #derspdf-print-root.derspdf-dark .derspdf-msg-select { background-color: #141414 !important; border-color: #333333 !important; }
         #derspdf-print-root.derspdf-dark user-query, #derspdf-print-root.derspdf-dark .user-query-bubble-with-background, #derspdf-print-root.derspdf-dark .query-content { background-color: #161616 !important; border-radius: 12px !important; }
         #derspdf-print-root.derspdf-dark pre, #derspdf-print-root.derspdf-dark code { background-color: #141414 !important; color: #f5f5f5 !important; }
         #derspdf-print-root.derspdf-dark a { color: #38bdf8 !important; }
         @media print {
-          .derspdf-no-print { display: none !important; }
+          .derspdf-no-print, .derspdf-excluded { display: none !important; }
           body { background: #fff !important; margin: 0 !important; }
           body:has(#derspdf-print-root.derspdf-dark) { background: #000000 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           #derspdf-print-root.derspdf-dark { background: #000000 !important; color: #f5f5f5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -321,8 +379,6 @@
 
     document.body.appendChild(box);
     if (floatBtn) floatBtn.textContent = '📄 PDF Yap';
-
-    setTimeout(() => window.print(), 450);
   }
 
   function addFloatingButton() {

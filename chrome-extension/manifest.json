@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DersPDF — Gemini'yi PDF Yap",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "Gemini konuşmalarını, formülleri ve Gemini'nin ürettiği görselleri tek tıkla temiz bir PDF'e dönüştürür.",
   "permissions": ["activeTab", "scripting"],
   "host_permissions": ["<all_urls>"],
