@@ -330,13 +330,37 @@
     };
 
     for (const node of rootNodes) {
-      let cloned = cloneWithShadow(node, imgPairs);
-      if (!cloned) continue;
+      let cloned = null;
+      try {
+        if (isChatGPT) {
+          const contentTarget =
+            node.querySelector('.markdown, .whitespace-pre-wrap') || node;
+          cloned = cloneWithShadow(contentTarget, imgPairs);
+          // Eğer node içinde görsel varsa ama contentTarget dışında kaldıysa onları da al
+          if (contentTarget !== node) {
+            const extraImgs = Array.from(node.querySelectorAll('img')).filter(
+              (im) => !contentTarget.contains(im)
+            );
+            for (const ex of extraImgs) {
+              const exClone = cloneWithShadow(ex, imgPairs);
+              if (exClone) {
+                if (!cloned) cloned = document.createElement('div');
+                cloned.appendChild(exClone);
+              }
+            }
+          }
+        } else {
+          cloned = cloneWithShadow(node, imgPairs);
+        }
+      } catch (_) {
+        cloned = null;
+      }
 
       // Eğer klonlanan düğümde görünür metin veya görsel kalmadıysa düz metni kurtar
       const hasContent =
-        (cloned.textContent && cloned.textContent.trim().length > 0) ||
-        cloned.querySelector('img');
+        cloned &&
+        ((cloned.textContent && cloned.textContent.trim().length > 0) ||
+          cloned.querySelector('img'));
       if (!hasContent) {
         const rawFallback = (node.innerText || node.textContent || '').trim();
         if (!rawFallback) continue;
@@ -352,6 +376,7 @@
       cloned.style.overflow = 'visible';
       cloned.style.position = 'static';
       cloned.style.transform = 'none';
+      cloned.style.display = 'block';
 
       const wrapper = document.createElement('div');
       wrapper.className = 'derspdf-msg-wrapper';
