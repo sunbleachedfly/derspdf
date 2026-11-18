@@ -72,9 +72,8 @@
 
     const tag = node.tagName.toLowerCase();
 
-    // Gereksiz UI buton ve ikonlarını atla
+    // Gereksiz UI buton ve ikonlarını atla (ama içinde görsel/canvas barındıran butonları SİLME!)
     if (
-      tag === 'button' ||
       tag === 'mat-icon' ||
       node.classList.contains('feedback-buttons') ||
       node.classList.contains('response-footer') ||
@@ -82,6 +81,11 @@
       node.classList.contains('copy-button')
     ) {
       return null;
+    }
+
+    if (tag === 'button') {
+      const hasMedia = node.querySelector('img, canvas') || node.shadowRoot;
+      if (!hasMedia) return null;
     }
 
     // Canvas'ı doğrudan PNG img'ye çevir
@@ -103,9 +107,9 @@
       return null;
     }
 
-    // Özel Web Component etiketlerini (shadowRoot varsa) normal div'e çevir ki içindeki görseller yerinde kalsın
+    // Özel Web Component etiketlerini (shadowRoot varsa) veya görsel saran butonları normal div'e çevir
     const hasShadow = !!node.shadowRoot;
-    const out = hasShadow
+    const out = (hasShadow || tag === 'button')
       ? document.createElement('div')
       : document.createElement(tag);
 
