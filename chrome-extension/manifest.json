@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "DersPDF — Gemini'yi PDF Yap",
+  "version": "1.0.0",
+  "description": "Gemini konuşmalarını, formülleri ve Gemini'nin ürettiği görselleri tek tıkla temiz bir PDF'e dönüştürür.",
+  "permissions": ["activeTab", "scripting"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Gemini Konuşmasını PDF Yap"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://gemini.google.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
