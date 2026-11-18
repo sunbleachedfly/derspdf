@@ -226,10 +226,15 @@
     if (isChatGPT) {
       turns = document.querySelectorAll('[data-message-author-role]');
       if (!turns.length) {
+        turns = document.querySelectorAll('[data-turn="user"], [data-turn="assistant"]');
+      }
+      if (!turns.length) {
         turns = document.querySelectorAll('main article, [data-testid*="conversation-turn"]');
       }
       if (!turns.length) {
-        turns = document.querySelectorAll('[data-message-id], .markdown, .whitespace-pre-wrap');
+        turns = document.querySelectorAll(
+          '.whitespace-pre-wrap, .prose, [class*="markdown"]'
+        );
       }
     } else {
       turns = document.querySelectorAll('user-query, model-response');
@@ -276,13 +281,14 @@
       'border:none;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;';
 
     const printBtn = document.createElement('button');
+    printBtn.id = 'derspdf-action-print';
     printBtn.textContent = '📄 PDF Kaydet / Yazdır';
     printBtn.style.cssText =
       'background:#0F5C52;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;';
     printBtn.onclick = () => window.print();
 
     const closeBtn = document.createElement('button');
-    closeBtn.textContent = "✕ Gemini'ye Dön";
+    closeBtn.textContent = '✕ Geri Dön';
     closeBtn.style.cssText =
       'border:none;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;';
     closeBtn.onclick = () => {
@@ -385,14 +391,23 @@
       const tagName = node.tagName ? node.tagName.toLowerCase() : '';
       const gptRole =
         node.getAttribute('data-message-author-role') ||
+        node.getAttribute('data-turn') ||
         (node.querySelector('[data-message-author-role]') &&
           node.querySelector('[data-message-author-role]').getAttribute('data-message-author-role'));
-      const isUser = tagName === 'user-query' || gptRole === 'user';
+      const isUser =
+        tagName === 'user-query' ||
+        gptRole === 'user' ||
+        node.classList.contains('whitespace-pre-wrap');
+      const isAssistant =
+        tagName === 'model-response' ||
+        gptRole === 'assistant' ||
+        node.classList.contains('prose') ||
+        (node.className && String(node.className).includes('markdown'));
       const labelText = isUser
         ? '👤 Senin Mesajın'
         : tagName === 'model-response'
           ? '✨ Gemini Yanıtı'
-          : gptRole === 'assistant'
+          : isAssistant
             ? '🤖 ChatGPT Yanıtı'
             : '💬 Konuşma';
 
@@ -451,6 +466,7 @@
       st.id = 'derspdf-print-style';
       st.textContent = `
         #derspdf-print-root .derspdf-excluded { opacity: 0.32; }
+        #derspdf-print-root #derspdf-action-print { background-color: #0F5C52 !important; color: #ffffff !important; }
         #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) * { color: #111827 !important; background-color: transparent !important; border-color: #d1d5db !important; }
         #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) .derspdf-msg-select { background-color: #f3f4f6 !important; border-color: #d1d5db !important; color: #111827 !important; }
         #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) user-query, #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) .user-query-bubble-with-background, #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) .query-content, #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) [data-message-author-role="user"], #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) .user-message-bubble-color { background-color: #f3f4f6 !important; border-radius: 12px !important; padding: 8px 12px !important; }
