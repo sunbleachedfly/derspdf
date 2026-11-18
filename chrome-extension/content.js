@@ -184,12 +184,12 @@
       themeBtn.textContent = '🌙 Siyah Mod';
     } else if (theme === 'paper') {
       box.classList.add('derspdf-paper');
-      box.style.backgroundColor = '#FBF6E6';
+      box.style.backgroundColor = '#FBF5E3';
       box.style.backgroundImage =
-        'radial-gradient(rgba(155, 132, 88, 0.16) 1px, transparent 1px)';
-      box.style.backgroundSize = '18px 18px';
+        `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E")`;
+      box.style.backgroundSize = '200px 200px';
       box.style.color = '#1C1917';
-      bar.style.backgroundColor = '#FBF6E6';
+      bar.style.backgroundColor = '#FBF5E3';
       bar.style.borderBottomColor = '#B45309';
       leftTitle.style.color = '#92400E';
       closeBtn.style.backgroundColor = '#EFE6CE';
@@ -224,9 +224,12 @@
 
     let turns;
     if (isChatGPT) {
-      turns = document.querySelectorAll('article[data-testid^="conversation-turn-"]');
+      turns = document.querySelectorAll('[data-message-author-role]');
       if (!turns.length) {
-        turns = document.querySelectorAll('[data-message-author-role]');
+        turns = document.querySelectorAll('[data-message-id]');
+      }
+      if (!turns.length) {
+        turns = document.querySelectorAll('[data-testid*="conversation-turn"]');
       }
     } else {
       turns = document.querySelectorAll('user-query, model-response');
@@ -425,8 +428,8 @@
           html, body { overflow: visible !important; height: auto !important; background: #fff !important; margin: 0 !important; }
           #derspdf-print-root { position: static !important; inset: auto !important; overflow: visible !important; height: auto !important; }
           #derspdf-print-inner { padding: 0 !important; max-width: none !important; }
-          body:has(#derspdf-print-root.derspdf-paper) { background: #FBF6E6 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          #derspdf-print-root.derspdf-paper { background-color: #FBF6E6 !important; background-image: radial-gradient(rgba(155, 132, 88, 0.16) 1px, transparent 1px) !important; background-size: 18px 18px !important; color: #1C1917 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          body:has(#derspdf-print-root.derspdf-paper) { background: #FBF5E3 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          #derspdf-print-root.derspdf-paper { background-color: #FBF5E3 !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E") !important; background-size: 200px 200px !important; color: #1C1917 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           body:has(#derspdf-print-root.derspdf-dark) { background: #000000 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           #derspdf-print-root.derspdf-dark { background: #000000 !important; color: #f5f5f5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           #derspdf-print-root img, #derspdf-print-root pre, #derspdf-print-root table { break-inside: avoid; page-break-inside: avoid; }
