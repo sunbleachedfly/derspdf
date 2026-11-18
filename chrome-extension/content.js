@@ -108,9 +108,11 @@
   const obs = new MutationObserver(() => addFloatingButton());
   obs.observe(document.body, { childList: true, subtree: false });
 
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg && msg.type === 'DERSPDF_PRINT') {
-      openPrintView();
-    }
-  });
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (msg && msg.type === 'DERSPDF_PRINT') {
+        openPrintView();
+      }
+    });
+  }
 })();
