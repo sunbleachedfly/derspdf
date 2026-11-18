@@ -1,0 +1,19 @@
+{
+  "name": "DersPDF — Gemini Konuşmalarından YKS Çalışma PDF'i",
+  "short_name": "DersPDF",
+  "description": "Gemini konuşmalarınızı ve çözümlerini doğru LaTeX formülleri, görseller ve GoodNotes uyumlu sayfa düzeniyle anında PDF'e dönüştürün.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FBF9F5",
+  "theme_color": "#0F5C52",
+  "lang": "tr",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
