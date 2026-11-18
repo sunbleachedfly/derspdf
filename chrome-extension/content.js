@@ -226,12 +226,16 @@
     const box = document.createElement('div');
     box.id = 'derspdf-print-root';
     box.style.cssText =
-      'padding:28px;max-width:840px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.65;min-height:100vh;';
+      'position:fixed;inset:0;z-index:999999;overflow-y:auto;-webkit-overflow-scrolling:touch;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.65;';
+
+    const inner = document.createElement('div');
+    inner.id = 'derspdf-print-inner';
+    inner.style.cssText = 'max-width:840px;margin:0 auto;padding:0 24px 64px;';
 
     const bar = document.createElement('div');
     bar.className = 'derspdf-no-print';
     bar.style.cssText =
-      'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:22px;padding:12px 0;border-bottom:2px solid #0F5C52;position:sticky;top:0;z-index:10;';
+      'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:22px;padding:14px 0;border-bottom:2px solid #0F5C52;position:sticky;top:0;z-index:10;';
 
     const leftTitle = document.createElement('div');
     leftTitle.textContent = '∑ DersPDF — Önizleme';
@@ -277,7 +281,8 @@
 
     btnGroup.append(selectAllBtn, themeBtn, printBtn, closeBtn);
     bar.append(leftTitle, btnGroup);
-    box.appendChild(bar);
+    inner.appendChild(bar);
+    box.appendChild(inner);
 
     applyTheme(isDark, box, bar, leftTitle, closeBtn, themeBtn);
 
@@ -343,7 +348,7 @@
 
       msgHeader.append(cb, lblSpan);
       wrapper.append(msgHeader, cloned);
-      box.appendChild(wrapper);
+      inner.appendChild(wrapper);
       msgEntries.push({ wrapper, checkbox: cb });
     }
 
@@ -359,7 +364,7 @@
           'position:static !important;max-width:100% !important;width:auto !important;height:auto !important;max-height:700px;border-radius:8px;margin:12px 0;display:block !important;opacity:1 !important;visibility:visible !important;';
 
         let p = pair.clone.parentElement;
-        for (let d = 0; d < 5 && p && p !== box; d++) {
+        for (let d = 0; d < 5 && p && p !== inner; d++) {
           p.style.position = 'static';
           p.style.height = 'auto';
           p.style.minHeight = '0';
@@ -385,7 +390,9 @@
         #derspdf-print-root.derspdf-dark a { color: #38bdf8 !important; }
         @media print {
           .derspdf-no-print, .derspdf-excluded { display: none !important; }
-          body { background: #fff !important; margin: 0 !important; }
+          html, body { overflow: visible !important; height: auto !important; background: #fff !important; margin: 0 !important; }
+          #derspdf-print-root { position: static !important; inset: auto !important; overflow: visible !important; height: auto !important; }
+          #derspdf-print-inner { padding: 0 !important; max-width: none !important; }
           body:has(#derspdf-print-root.derspdf-dark) { background: #000000 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           #derspdf-print-root.derspdf-dark { background: #000000 !important; color: #f5f5f5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           #derspdf-print-root img, #derspdf-print-root pre, #derspdf-print-root table { break-inside: avoid; page-break-inside: avoid; }
