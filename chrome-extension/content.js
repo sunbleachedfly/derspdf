@@ -11,6 +11,23 @@
     });
   }
 
+  function bgFetchDataUrl(url) {
+    return new Promise((resolve) => {
+      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+        resolve('');
+        return;
+      }
+      try {
+        chrome.runtime.sendMessage({ type: 'FETCH_IMAGE', url }, (res) => {
+          if (chrome.runtime.lastError || !res) resolve('');
+          else resolve(res.dataUrl || '');
+        });
+      } catch (_) {
+        resolve('');
+      }
+    });
+  }
+
   async function imageToDataUrl(origImg) {
     const src = origImg.currentSrc || origImg.src || '';
     if (!src) return '';
@@ -29,7 +46,11 @@
       }
     } catch (_) {}
 
-    // 2. fetch (oturum çerezleriyle)
+    // 2. Background script üzerinden CORS olmadan çek
+    const bgData = await bgFetchDataUrl(src);
+    if (bgData) return bgData;
+
+    // 3. Doğrudan fetch dene
     try {
       const resp = await fetch(src, { credentials: 'include' });
       if (resp.ok) {
@@ -97,6 +118,8 @@
     bar.append(leftTitle, btnGroup);
     box.appendChild(bar);
 
+    let totalImages = 0;
+
     for (const node of rootNodes) {
       const origImgs = Array.from(node.querySelectorAll('img'));
       const origCanvases = Array.from(node.querySelectorAll('canvas'));
@@ -118,6 +141,7 @@
             img.style.cssText =
               'max-width:100%;height:auto;border-radius:8px;margin:10px 0;display:block;';
             cEl.replaceWith(img);
+            totalImages++;
           }
         } catch (_) {}
       });
@@ -130,14 +154,31 @@
             const dataUrl = await imageToDataUrl(origImg);
             if (dataUrl) cImg.src = dataUrl;
           }
+          totalImages++;
           cImg.removeAttribute('loading');
           cImg.removeAttribute('srcset');
           cImg.style.cssText =
-            'max-width:100% !important;width:auto !important;height:auto !important;max-height:700px;border-radius:8px;margin:12px 0;display:block !important;opacity:1 !important;visibility:visible !important;';
+            'position:static !important;max-width:100% !important;width:auto !important;height:auto !important;max-height:700px;border-radius:8px;margin:12px 0;display:block !important;opacity:1 !important;visibility:visible !important;';
+
+          // Görseli saran gizli/daraltılmış kapsayıcıları düzelt
+          let p = cImg.parentElement;
+          for (let d = 0; d < 4 && p && p !== clone; d++) {
+            p.style.position = 'static';
+            p.style.height = 'auto';
+            p.style.minHeight = '0';
+            p.style.overflow = 'visible';
+            p.style.opacity = '1';
+            p.style.visibility = 'visible';
+            p = p.parentElement;
+          }
         })
       );
 
       box.appendChild(clone);
+    }
+
+    if (totalImages > 0) {
+      leftTitle.textContent = `∑ DersPDF — Önizleme (${totalImages} görsel)`;
     }
 
     if (!document.getElementById('derspdf-print-style')) {
