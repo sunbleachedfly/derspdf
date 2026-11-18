@@ -61,52 +61,132 @@
     return url;
   }
 
-  // Light DOM + Shadow DOM içindeki tüm görselleri derinlemesine topla
-  function collectDeepMedia(root, results = { imgs: [], bgUrls: [], canvases: [] }) {
-    if (!root) return results;
+  // Light DOM + Shadow DOM'u yerinde (orijinal sırasını bozmadan) kopyala
+  function cloneWithShadow(node, imgPairs) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return document.createTextNode(node.textContent);
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return null;
+    }
 
-    if (root.nodeType === 1) {
-      const tag = root.tagName;
-      if (tag === 'IMG') {
-        const rect = root.getBoundingClientRect();
-        const w = root.naturalWidth || rect.width || 0;
-        const h = root.naturalHeight || rect.height || 0;
-        // Küçük UI ikonlarını (avatar vs.) hariç tut, gerçek içerik görsellerini al
-        if (w >= 48 || h >= 48 || (root.src && root.src.includes('googleusercontent'))) {
-          results.imgs.push(root);
-        }
-      } else if (tag === 'CANVAS') {
-        const rect = root.getBoundingClientRect();
-        if (rect.width >= 48 || rect.height >= 48) {
-          results.canvases.push(root);
-        }
-      } else {
+    const tag = node.tagName.toLowerCase();
+
+    // Gereksiz UI buton ve ikonlarını atla
+    if (
+      tag === 'button' ||
+      tag === 'mat-icon' ||
+      node.classList.contains('feedback-buttons') ||
+      node.classList.contains('response-footer') ||
+      node.classList.contains('tts-button-container') ||
+      node.classList.contains('copy-button')
+    ) {
+      return null;
+    }
+
+    // Canvas'ı doğrudan PNG img'ye çevir
+    if (tag === 'canvas') {
+      const rect = node.getBoundingClientRect();
+      if (rect.width >= 48 || rect.height >= 48) {
         try {
-          const bg = getComputedStyle(root).backgroundImage;
-          if (bg && bg !== 'none' && bg.includes('url(')) {
-            const rect = root.getBoundingClientRect();
-            if (rect.width >= 64 && rect.height >= 64) {
-              const m = bg.match(/url\(["']?([^"')]+)["']?\)/);
-              if (m && m[1] && !m[1].startsWith('data:image/svg')) {
-                results.bgUrls.push(m[1]);
-              }
-            }
+          const dataUrl = node.toDataURL('image/png');
+          if (dataUrl && dataUrl.length > 50) {
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.style.cssText =
+              'max-width:100%;height:auto;border-radius:8px;margin:10px 0;display:block;';
+            imgPairs.push({ orig: null, clone: img, alreadyData: true });
+            return img;
           }
         } catch (_) {}
       }
+      return null;
+    }
 
-      if (root.shadowRoot) {
-        collectDeepMedia(root.shadowRoot, results);
+    // Özel Web Component etiketlerini (shadowRoot varsa) normal div'e çevir ki içindeki görseller yerinde kalsın
+    const hasShadow = !!node.shadowRoot;
+    const out = hasShadow
+      ? document.createElement('div')
+      : document.createElement(tag);
+
+    // Özellikleri kopyala
+    for (const attr of node.attributes) {
+      if (attr.name === 'loading' || attr.name === 'srcset') continue;
+      try {
+        out.setAttribute(attr.name, attr.value);
+      } catch (_) {}
+    }
+
+    if (tag === 'img') {
+      const rect = node.getBoundingClientRect();
+      const w = node.naturalWidth || rect.width || 0;
+      const h = node.naturalHeight || rect.height || 0;
+      const src = node.currentSrc || node.src || '';
+      if (w >= 48 || h >= 48 || src.includes('googleusercontent') || src.startsWith('blob:') || src.startsWith('data:')) {
+        imgPairs.push({ orig: node, clone: out, alreadyData: false });
+      } else {
+        return null; // Küçük UI ikonlarını gizle
       }
     }
 
-    const children = root.children || root.childNodes || [];
-    for (const child of children) {
-      if (child.nodeType === 1) {
-        collectDeepMedia(child, results);
+    // CSS background-image kontrolü
+    try {
+      const bg = getComputedStyle(node).backgroundImage;
+      if (bg && bg !== 'none' && bg.includes('url(')) {
+        const rect = node.getBoundingClientRect();
+        if (rect.width >= 64 && rect.height >= 64) {
+          const m = bg.match(/url\(["']?([^"')]+)["']?\)/);
+          if (m && m[1] && !m[1].startsWith('data:image/svg')) {
+            const bgImg = document.createElement('img');
+            bgImg.src = m[1];
+            imgPairs.push({ orig: null, clone: bgImg, rawUrl: m[1], alreadyData: false });
+            out.appendChild(bgImg);
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Önce Shadow DOM çocuklarını, sonra Light DOM çocuklarını aynı sırayla kopyala
+    if (node.shadowRoot) {
+      for (const sChild of node.shadowRoot.childNodes) {
+        const clonedChild = cloneWithShadow(sChild, imgPairs);
+        if (clonedChild) out.appendChild(clonedChild);
       }
     }
-    return results;
+    for (const child of node.childNodes) {
+      const clonedChild = cloneWithShadow(child, imgPairs);
+      if (clonedChild) out.appendChild(clonedChild);
+    }
+
+    return out;
+  }
+
+  function applyTheme(isDark, box, bar, leftTitle, closeBtn, themeBtn) {
+    if (isDark) {
+      box.classList.add('derspdf-dark');
+      box.style.background = '#111827';
+      box.style.color = '#f1f5f9';
+      bar.style.background = '#111827';
+      bar.style.borderBottomColor = '#2dd4bf';
+      leftTitle.style.color = '#2dd4bf';
+      closeBtn.style.background = '#1e293b';
+      closeBtn.style.color = '#f1f5f9';
+      themeBtn.style.background = '#1e293b';
+      themeBtn.style.color = '#f1f5f9';
+      themeBtn.textContent = '☀️ Açık Mod';
+    } else {
+      box.classList.remove('derspdf-dark');
+      box.style.background = '#ffffff';
+      box.style.color = '#111827';
+      bar.style.background = '#ffffff';
+      bar.style.borderBottomColor = '#0F5C52';
+      leftTitle.style.color = '#0F5C52';
+      closeBtn.style.background = '#eef0f2';
+      closeBtn.style.color = '#111827';
+      themeBtn.style.background = '#eef0f2';
+      themeBtn.style.color = '#111827';
+      themeBtn.textContent = '🌙 Koyu Mod';
+    }
   }
 
   async function openPrintView() {
@@ -123,22 +203,28 @@
       ? Array.from(turns)
       : [document.querySelector('main') || document.body];
 
+    let isDark = localStorage.getItem('derspdf_dark_mode') === '1';
+
     const box = document.createElement('div');
     box.id = 'derspdf-print-root';
     box.style.cssText =
-      'background:#fff;color:#111;padding:28px;max-width:840px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.65;min-height:100vh;';
+      'padding:28px;max-width:840px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.65;min-height:100vh;';
 
     const bar = document.createElement('div');
     bar.className = 'derspdf-no-print';
     bar.style.cssText =
-      'display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px;padding:12px 0;border-bottom:2px solid #0F5C52;position:sticky;top:0;background:#fff;z-index:10;';
+      'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:22px;padding:12px 0;border-bottom:2px solid #0F5C52;position:sticky;top:0;z-index:10;';
 
     const leftTitle = document.createElement('div');
-    leftTitle.textContent = '∑ DersPDF — Yazdırma / PDF Önizleme';
-    leftTitle.style.cssText = 'font-weight:700;font-size:16px;color:#0F5C52;';
+    leftTitle.textContent = '∑ DersPDF — Önizleme';
+    leftTitle.style.cssText = 'font-weight:700;font-size:16px;';
 
     const btnGroup = document.createElement('div');
-    btnGroup.style.cssText = 'display:flex;gap:10px;';
+    btnGroup.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+
+    const themeBtn = document.createElement('button');
+    themeBtn.style.cssText =
+      'border:none;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;';
 
     const printBtn = document.createElement('button');
     printBtn.textContent = '📄 PDF Kaydet / Yazdır';
@@ -149,7 +235,7 @@
     const closeBtn = document.createElement('button');
     closeBtn.textContent = "✕ Gemini'ye Dön";
     closeBtn.style.cssText =
-      'background:#eef0f2;color:#111;border:none;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;';
+      'border:none;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;';
     closeBtn.onclick = () => {
       box.remove();
       Array.from(document.body.children).forEach((el) => {
@@ -160,116 +246,66 @@
       });
     };
 
-    btnGroup.append(printBtn, closeBtn);
+    themeBtn.onclick = () => {
+      isDark = !isDark;
+      localStorage.setItem('derspdf_dark_mode', isDark ? '1' : '0');
+      applyTheme(isDark, box, bar, leftTitle, closeBtn, themeBtn);
+    };
+
+    btnGroup.append(themeBtn, printBtn, closeBtn);
     bar.append(leftTitle, btnGroup);
     box.appendChild(bar);
 
-    let totalImages = 0;
+    applyTheme(isDark, box, bar, leftTitle, closeBtn, themeBtn);
 
+    const imgPairs = [];
     for (const node of rootNodes) {
-      const deep = collectDeepMedia(node);
-      const lightImgs = Array.from(node.querySelectorAll('img'));
-
-      const clone = node.cloneNode(true);
-      clone
-        .querySelectorAll(
-          'button, mat-icon, .feedback-buttons, .response-footer, .tts-button-container, .copy-button'
-        )
-        .forEach((el) => el.remove());
-
-      // Light DOM'daki img'leri dönüştür
-      const clonedImgs = Array.from(clone.querySelectorAll('img'));
-      const handledSrcs = new Set();
-
-      await Promise.all(
-        clonedImgs.map(async (cImg, idx) => {
-          const origImg = lightImgs[idx];
-          const rawSrc = (origImg && (origImg.currentSrc || origImg.src)) || cImg.src || '';
-          if (rawSrc) handledSrcs.add(rawSrc);
-          if (origImg) {
-            const dataUrl = await urlToDataUrl(rawSrc, origImg);
-            if (dataUrl) cImg.src = dataUrl;
-          }
-          totalImages++;
-          cImg.removeAttribute('loading');
-          cImg.removeAttribute('srcset');
-          cImg.style.cssText =
-            'position:static !important;max-width:100% !important;width:auto !important;height:auto !important;max-height:700px;border-radius:8px;margin:12px 0;display:block !important;opacity:1 !important;visibility:visible !important;';
-        })
-      );
-
-      // Shadow DOM içinde kalan veya arka plan görseli olanları ayrıca ekle
-      for (const sImg of deep.imgs) {
-        const sSrc = sImg.currentSrc || sImg.src || '';
-        if (sSrc && !handledSrcs.has(sSrc)) {
-          handledSrcs.add(sSrc);
-          const dataUrl = await urlToDataUrl(sSrc, sImg);
-          const newImg = document.createElement('img');
-          newImg.src = dataUrl || sSrc;
-          newImg.style.cssText =
-            'max-width:100% !important;height:auto !important;max-height:700px;border-radius:8px;margin:12px 0;display:block !important;';
-          clone.appendChild(newImg);
-          totalImages++;
-        }
-      }
-
-      for (const bgUrl of deep.bgUrls) {
-        if (!handledSrcs.has(bgUrl)) {
-          handledSrcs.add(bgUrl);
-          const dataUrl = await urlToDataUrl(bgUrl, null);
-          const newImg = document.createElement('img');
-          newImg.src = dataUrl || bgUrl;
-          newImg.style.cssText =
-            'max-width:100% !important;height:auto !important;max-height:700px;border-radius:8px;margin:12px 0;display:block !important;';
-          clone.appendChild(newImg);
-          totalImages++;
-        }
-      }
-
-      for (const cEl of deep.canvases) {
-        try {
-          const dataUrl = cEl.toDataURL('image/png');
-          if (dataUrl && dataUrl.length > 50) {
-            const newImg = document.createElement('img');
-            newImg.src = dataUrl;
-            newImg.style.cssText =
-              'max-width:100% !important;height:auto !important;border-radius:8px;margin:12px 0;display:block !important;';
-            clone.appendChild(newImg);
-            totalImages++;
-          }
-        } catch (_) {}
-      }
-
-      box.appendChild(clone);
+      const cloned = cloneWithShadow(node, imgPairs);
+      if (cloned) box.appendChild(cloned);
     }
 
-    // Eğer konuşma düğümleri dışında kalan (ör. main altındaki) görseller varsa onları da yakala
-    if (totalImages === 0) {
-      const mainRoot = document.querySelector('main') || document.body;
-      const fallbackMedia = collectDeepMedia(mainRoot);
-      const seen = new Set();
-      for (const fImg of fallbackMedia.imgs) {
-        const src = fImg.currentSrc || fImg.src || '';
-        if (src && !seen.has(src)) {
-          seen.add(src);
-          const dataUrl = await urlToDataUrl(src, fImg);
-          const newImg = document.createElement('img');
-          newImg.src = dataUrl || src;
-          newImg.style.cssText =
-            'max-width:100% !important;height:auto !important;max-height:700px;border-radius:8px;margin:12px 0;display:block !important;';
-          box.appendChild(newImg);
-          totalImages++;
+    // Tüm görselleri bulundukları yerde base64'e çevir
+    await Promise.all(
+      imgPairs.map(async (pair) => {
+        if (!pair.alreadyData) {
+          const rawUrl = pair.rawUrl || (pair.orig && (pair.orig.currentSrc || pair.orig.src)) || pair.clone.src || '';
+          const dataUrl = await urlToDataUrl(rawUrl, pair.orig);
+          if (dataUrl) pair.clone.src = dataUrl;
         }
-      }
-    }
+        pair.clone.style.cssText =
+          'position:static !important;max-width:100% !important;width:auto !important;height:auto !important;max-height:700px;border-radius:8px;margin:12px 0;display:block !important;opacity:1 !important;visibility:visible !important;';
 
-    leftTitle.textContent = `∑ DersPDF — Önizleme (${totalImages} görsel)`;
+        let p = pair.clone.parentElement;
+        for (let d = 0; d < 5 && p && p !== box; d++) {
+          p.style.position = 'static';
+          p.style.height = 'auto';
+          p.style.minHeight = '0';
+          p.style.overflow = 'visible';
+          p.style.opacity = '1';
+          p.style.visibility = 'visible';
+          p = p.parentElement;
+        }
+      })
+    );
+
+    leftTitle.textContent = `∑ DersPDF — Önizleme (${imgPairs.length} görsel)`;
 
     if (!document.getElementById('derspdf-print-style')) {
       const st = document.createElement('style');
       st.id = 'derspdf-print-style';
-      st.textContent =
-        '@media print { .derspdf-no-print { display: none !important; } body { background: #fff !important; } #derspdf-print-root img, #derspdf-print-root pre, #derspdf-print-root table { break-inside: avoid; page-break-inside: avoid; } #derspdf-print-root img { display: block !important; opacity: 1 !important; visibility: visible !important; } }';
+      st.textContent = `
+        #derspdf-print-root.derspdf-dark * { color: #e2e8f0 !important; border-color: #334155 !important; }
+        #derspdf-print-root.derspdf-dark pre, #derspdf-print-root.derspdf-dark code { background: #1e293b !important; color: #f8fafc !important; }
+        #derspdf-print-root.derspdf-dark a { color: #38bdf8 !important; }
+        @media print {
+          .derspdf-no-print { display: none !important; }
+          body { background: #fff !important; margin: 0 !important; }
+          body:has(#derspdf-print-root.derspdf-dark) { background: #111827 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          #derspdf-print-root.derspdf-dark { background: #111827 !important; color: #f1f5f9 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          #derspdf-print-root img, #derspdf-print-root pre, #derspdf-print-root table { break-inside: avoid; page-break-inside: avoid; }
+          #derspdf-print-root img { display: block !important; opacity: 1 !important; visibility: visible !important; }
+        }
+      `;
       document.head.appendChild(st);
     }
 
