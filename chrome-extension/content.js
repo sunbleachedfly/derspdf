@@ -168,15 +168,15 @@
   function applyTheme(isDark, box, bar, leftTitle, closeBtn, themeBtn) {
     if (isDark) {
       box.classList.add('derspdf-dark');
-      box.style.background = '#111827';
-      box.style.color = '#f1f5f9';
-      bar.style.background = '#111827';
+      box.style.background = '#000000';
+      box.style.color = '#f5f5f5';
+      bar.style.background = '#000000';
       bar.style.borderBottomColor = '#2dd4bf';
       leftTitle.style.color = '#2dd4bf';
-      closeBtn.style.background = '#1e293b';
-      closeBtn.style.color = '#f1f5f9';
-      themeBtn.style.background = '#1e293b';
-      themeBtn.style.color = '#f1f5f9';
+      closeBtn.style.background = '#1a1a1a';
+      closeBtn.style.color = '#f5f5f5';
+      themeBtn.style.background = '#1a1a1a';
+      themeBtn.style.color = '#f5f5f5';
       themeBtn.textContent = '☀️ Açık Mod';
     } else {
       box.classList.remove('derspdf-dark');
@@ -298,14 +298,15 @@
       const st = document.createElement('style');
       st.id = 'derspdf-print-style';
       st.textContent = `
-        #derspdf-print-root.derspdf-dark * { color: #e2e8f0 !important; border-color: #334155 !important; }
-        #derspdf-print-root.derspdf-dark pre, #derspdf-print-root.derspdf-dark code { background: #1e293b !important; color: #f8fafc !important; }
+        #derspdf-print-root.derspdf-dark * { color: #f5f5f5 !important; background-color: transparent !important; border-color: #2a2a2a !important; }
+        #derspdf-print-root.derspdf-dark user-query, #derspdf-print-root.derspdf-dark .user-query-bubble-with-background, #derspdf-print-root.derspdf-dark .query-content { background-color: #161616 !important; border-radius: 12px !important; }
+        #derspdf-print-root.derspdf-dark pre, #derspdf-print-root.derspdf-dark code { background-color: #141414 !important; color: #f5f5f5 !important; }
         #derspdf-print-root.derspdf-dark a { color: #38bdf8 !important; }
         @media print {
           .derspdf-no-print { display: none !important; }
           body { background: #fff !important; margin: 0 !important; }
-          body:has(#derspdf-print-root.derspdf-dark) { background: #111827 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          #derspdf-print-root.derspdf-dark { background: #111827 !important; color: #f1f5f9 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          body:has(#derspdf-print-root.derspdf-dark) { background: #000000 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          #derspdf-print-root.derspdf-dark { background: #000000 !important; color: #f5f5f5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           #derspdf-print-root img, #derspdf-print-root pre, #derspdf-print-root table { break-inside: avoid; page-break-inside: avoid; }
           #derspdf-print-root img { display: block !important; opacity: 1 !important; visibility: visible !important; }
         }
