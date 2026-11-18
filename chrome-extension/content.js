@@ -226,10 +226,10 @@
     if (isChatGPT) {
       turns = document.querySelectorAll('[data-message-author-role]');
       if (!turns.length) {
-        turns = document.querySelectorAll('[data-message-id]');
+        turns = document.querySelectorAll('main article, [data-testid*="conversation-turn"]');
       }
       if (!turns.length) {
-        turns = document.querySelectorAll('[data-testid*="conversation-turn"]');
+        turns = document.querySelectorAll('[data-message-id], .markdown, .whitespace-pre-wrap');
       }
     } else {
       turns = document.querySelectorAll('user-query, model-response');
@@ -330,8 +330,28 @@
     };
 
     for (const node of rootNodes) {
-      const cloned = cloneWithShadow(node, imgPairs);
+      let cloned = cloneWithShadow(node, imgPairs);
       if (!cloned) continue;
+
+      // Eğer klonlanan düğümde görünür metin veya görsel kalmadıysa düz metni kurtar
+      const hasContent =
+        (cloned.textContent && cloned.textContent.trim().length > 0) ||
+        cloned.querySelector('img');
+      if (!hasContent) {
+        const rawFallback = (node.innerText || node.textContent || '').trim();
+        if (!rawFallback) continue;
+        cloned = document.createElement('div');
+        cloned.style.whiteSpace = 'pre-wrap';
+        cloned.textContent = rawFallback;
+      }
+
+      cloned.style.opacity = '1';
+      cloned.style.visibility = 'visible';
+      cloned.style.height = 'auto';
+      cloned.style.maxHeight = 'none';
+      cloned.style.overflow = 'visible';
+      cloned.style.position = 'static';
+      cloned.style.transform = 'none';
 
       const wrapper = document.createElement('div');
       wrapper.className = 'derspdf-msg-wrapper';
