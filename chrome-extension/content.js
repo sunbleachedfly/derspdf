@@ -166,31 +166,48 @@
     return out;
   }
 
-  function applyTheme(isDark, box, bar, leftTitle, closeBtn, themeBtn) {
-    if (isDark) {
+  function applyTheme(theme, box, bar, leftTitle, closeBtn, themeBtn) {
+    box.classList.remove('derspdf-dark', 'derspdf-paper');
+    box.style.backgroundImage = 'none';
+
+    if (theme === 'dark') {
       box.classList.add('derspdf-dark');
-      box.style.background = '#000000';
+      box.style.backgroundColor = '#000000';
       box.style.color = '#f5f5f5';
-      bar.style.background = '#000000';
+      bar.style.backgroundColor = '#000000';
       bar.style.borderBottomColor = '#2dd4bf';
       leftTitle.style.color = '#2dd4bf';
-      closeBtn.style.background = '#1a1a1a';
+      closeBtn.style.backgroundColor = '#1a1a1a';
       closeBtn.style.color = '#f5f5f5';
-      themeBtn.style.background = '#1a1a1a';
+      themeBtn.style.backgroundColor = '#1a1a1a';
       themeBtn.style.color = '#f5f5f5';
-      themeBtn.textContent = '☀️ Açık Mod';
+      themeBtn.textContent = '🌙 Siyah Mod';
+    } else if (theme === 'paper') {
+      box.classList.add('derspdf-paper');
+      box.style.backgroundColor = '#FBF6E6';
+      box.style.backgroundImage =
+        'radial-gradient(rgba(155, 132, 88, 0.16) 1px, transparent 1px)';
+      box.style.backgroundSize = '18px 18px';
+      box.style.color = '#1C1917';
+      bar.style.backgroundColor = '#FBF6E6';
+      bar.style.borderBottomColor = '#B45309';
+      leftTitle.style.color = '#92400E';
+      closeBtn.style.backgroundColor = '#EFE6CE';
+      closeBtn.style.color = '#1C1917';
+      themeBtn.style.backgroundColor = '#EFE6CE';
+      themeBtn.style.color = '#1C1917';
+      themeBtn.textContent = '📜 Sarı Kağıt';
     } else {
-      box.classList.remove('derspdf-dark');
-      box.style.background = '#ffffff';
+      box.style.backgroundColor = '#ffffff';
       box.style.color = '#111827';
-      bar.style.background = '#ffffff';
+      bar.style.backgroundColor = '#ffffff';
       bar.style.borderBottomColor = '#0F5C52';
       leftTitle.style.color = '#0F5C52';
-      closeBtn.style.background = '#eef0f2';
+      closeBtn.style.backgroundColor = '#eef0f2';
       closeBtn.style.color = '#111827';
-      themeBtn.style.background = '#eef0f2';
+      themeBtn.style.backgroundColor = '#eef0f2';
       themeBtn.style.color = '#111827';
-      themeBtn.textContent = '🌙 Koyu Mod';
+      themeBtn.textContent = '☀️ Beyaz Mod';
     }
   }
 
@@ -221,7 +238,9 @@
       ? Array.from(turns)
       : [document.querySelector('main') || document.body];
 
-    let isDark = localStorage.getItem('derspdf_dark_mode') === '1';
+    const themes = ['light', 'paper', 'dark'];
+    let currentTheme = localStorage.getItem('derspdf_theme') || (localStorage.getItem('derspdf_dark_mode') === '1' ? 'dark' : 'light');
+    if (!themes.includes(currentTheme)) currentTheme = 'light';
 
     const box = document.createElement('div');
     box.id = 'derspdf-print-root';
@@ -274,9 +293,10 @@
     };
 
     themeBtn.onclick = () => {
-      isDark = !isDark;
-      localStorage.setItem('derspdf_dark_mode', isDark ? '1' : '0');
-      applyTheme(isDark, box, bar, leftTitle, closeBtn, themeBtn);
+      const nextIdx = (themes.indexOf(currentTheme) + 1) % themes.length;
+      currentTheme = themes[nextIdx];
+      localStorage.setItem('derspdf_theme', currentTheme);
+      applyTheme(currentTheme, box, bar, leftTitle, closeBtn, themeBtn);
     };
 
     btnGroup.append(selectAllBtn, themeBtn, printBtn, closeBtn);
@@ -284,7 +304,7 @@
     inner.appendChild(bar);
     box.appendChild(inner);
 
-    applyTheme(isDark, box, bar, leftTitle, closeBtn, themeBtn);
+    applyTheme(currentTheme, box, bar, leftTitle, closeBtn, themeBtn);
 
     const imgPairs = [];
     const msgEntries = [];
@@ -383,11 +403,18 @@
       st.id = 'derspdf-print-style';
       st.textContent = `
         #derspdf-print-root .derspdf-excluded { opacity: 0.32; }
-        #derspdf-print-root:not(.derspdf-dark) * { color: #111827 !important; background-color: transparent !important; border-color: #d1d5db !important; }
-        #derspdf-print-root:not(.derspdf-dark) .derspdf-msg-select { background-color: #f3f4f6 !important; border-color: #d1d5db !important; color: #111827 !important; }
-        #derspdf-print-root:not(.derspdf-dark) user-query, #derspdf-print-root:not(.derspdf-dark) .user-query-bubble-with-background, #derspdf-print-root:not(.derspdf-dark) .query-content, #derspdf-print-root:not(.derspdf-dark) [data-message-author-role="user"], #derspdf-print-root:not(.derspdf-dark) .user-message-bubble-color { background-color: #f3f4f6 !important; border-radius: 12px !important; padding: 8px 12px !important; }
-        #derspdf-print-root:not(.derspdf-dark) pre, #derspdf-print-root:not(.derspdf-dark) code { background-color: #f3f4f6 !important; color: #111827 !important; }
-        #derspdf-print-root:not(.derspdf-dark) a { color: #0f5c52 !important; }
+        #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) * { color: #111827 !important; background-color: transparent !important; border-color: #d1d5db !important; }
+        #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) .derspdf-msg-select { background-color: #f3f4f6 !important; border-color: #d1d5db !important; color: #111827 !important; }
+        #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) user-query, #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) .user-query-bubble-with-background, #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) .query-content, #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) [data-message-author-role="user"], #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) .user-message-bubble-color { background-color: #f3f4f6 !important; border-radius: 12px !important; padding: 8px 12px !important; }
+        #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) pre, #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) code { background-color: #f3f4f6 !important; color: #111827 !important; }
+        #derspdf-print-root:not(.derspdf-dark):not(.derspdf-paper) a { color: #0f5c52 !important; }
+
+        #derspdf-print-root.derspdf-paper * { color: #1C1917 !important; background-color: transparent !important; border-color: #DFD3B4 !important; }
+        #derspdf-print-root.derspdf-paper .derspdf-msg-select { background-color: #EFE6CE !important; border-color: #D8C9A3 !important; color: #1C1917 !important; }
+        #derspdf-print-root.derspdf-paper user-query, #derspdf-print-root.derspdf-paper .user-query-bubble-with-background, #derspdf-print-root.derspdf-paper .query-content, #derspdf-print-root.derspdf-paper [data-message-author-role="user"], #derspdf-print-root.derspdf-paper .user-message-bubble-color { background-color: #F2E9CF !important; border-radius: 12px !important; padding: 8px 12px !important; }
+        #derspdf-print-root.derspdf-paper pre, #derspdf-print-root.derspdf-paper code { background-color: #F4ECD6 !important; color: #1C1917 !important; }
+        #derspdf-print-root.derspdf-paper a { color: #0F5C52 !important; }
+
         #derspdf-print-root.derspdf-dark * { color: #f5f5f5 !important; background-color: transparent !important; border-color: #2a2a2a !important; }
         #derspdf-print-root.derspdf-dark .derspdf-msg-select { background-color: #141414 !important; border-color: #333333 !important; }
         #derspdf-print-root.derspdf-dark user-query, #derspdf-print-root.derspdf-dark .user-query-bubble-with-background, #derspdf-print-root.derspdf-dark .query-content, #derspdf-print-root.derspdf-dark [data-message-author-role="user"], #derspdf-print-root.derspdf-dark .user-message-bubble-color { background-color: #161616 !important; border-radius: 12px !important; padding: 8px 12px !important; }
@@ -398,6 +425,8 @@
           html, body { overflow: visible !important; height: auto !important; background: #fff !important; margin: 0 !important; }
           #derspdf-print-root { position: static !important; inset: auto !important; overflow: visible !important; height: auto !important; }
           #derspdf-print-inner { padding: 0 !important; max-width: none !important; }
+          body:has(#derspdf-print-root.derspdf-paper) { background: #FBF6E6 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          #derspdf-print-root.derspdf-paper { background-color: #FBF6E6 !important; background-image: radial-gradient(rgba(155, 132, 88, 0.16) 1px, transparent 1px) !important; background-size: 18px 18px !important; color: #1C1917 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           body:has(#derspdf-print-root.derspdf-dark) { background: #000000 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           #derspdf-print-root.derspdf-dark { background: #000000 !important; color: #f5f5f5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           #derspdf-print-root img, #derspdf-print-root pre, #derspdf-print-root table { break-inside: avoid; page-break-inside: avoid; }
