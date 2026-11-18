@@ -75,6 +75,7 @@
     // Gereksiz UI buton ve ikonlarını atla (ama içinde görsel/canvas barındıran butonları SİLME!)
     if (
       tag === 'mat-icon' ||
+      node.classList.contains('sr-only') ||
       node.classList.contains('feedback-buttons') ||
       node.classList.contains('response-footer') ||
       node.classList.contains('tts-button-container') ||
@@ -200,9 +201,21 @@
     const old = document.getElementById('derspdf-print-root');
     if (old) old.remove();
 
-    let turns = document.querySelectorAll('user-query, model-response');
-    if (!turns.length) {
-      turns = document.querySelectorAll('.conversation-container');
+    const isChatGPT =
+      location.hostname.includes('chatgpt.com') ||
+      location.hostname.includes('chat.openai.com');
+
+    let turns;
+    if (isChatGPT) {
+      turns = document.querySelectorAll('article[data-testid^="conversation-turn-"]');
+      if (!turns.length) {
+        turns = document.querySelectorAll('[data-message-author-role]');
+      }
+    } else {
+      turns = document.querySelectorAll('user-query, model-response');
+      if (!turns.length) {
+        turns = document.querySelectorAll('.conversation-container');
+      }
     }
     const rootNodes = turns.length
       ? Array.from(turns)
@@ -297,8 +310,18 @@
       wrapper.style.cssText = 'margin-bottom:18px;transition:opacity 0.15s;';
 
       const tagName = node.tagName ? node.tagName.toLowerCase() : '';
-      const isUser = tagName === 'user-query';
-      const labelText = isUser ? '👤 Senin Mesajın' : tagName === 'model-response' ? '✨ Gemini Yanıtı' : '💬 Konuşma';
+      const gptRole =
+        node.getAttribute('data-message-author-role') ||
+        (node.querySelector('[data-message-author-role]') &&
+          node.querySelector('[data-message-author-role]').getAttribute('data-message-author-role'));
+      const isUser = tagName === 'user-query' || gptRole === 'user';
+      const labelText = isUser
+        ? '👤 Senin Mesajın'
+        : tagName === 'model-response'
+          ? '✨ Gemini Yanıtı'
+          : gptRole === 'assistant'
+            ? '🤖 ChatGPT Yanıtı'
+            : '💬 Konuşma';
 
       const msgHeader = document.createElement('label');
       msgHeader.className = 'derspdf-no-print derspdf-msg-select';
@@ -357,7 +380,7 @@
         #derspdf-print-root .derspdf-excluded { opacity: 0.32; }
         #derspdf-print-root.derspdf-dark * { color: #f5f5f5 !important; background-color: transparent !important; border-color: #2a2a2a !important; }
         #derspdf-print-root.derspdf-dark .derspdf-msg-select { background-color: #141414 !important; border-color: #333333 !important; }
-        #derspdf-print-root.derspdf-dark user-query, #derspdf-print-root.derspdf-dark .user-query-bubble-with-background, #derspdf-print-root.derspdf-dark .query-content { background-color: #161616 !important; border-radius: 12px !important; }
+        #derspdf-print-root.derspdf-dark user-query, #derspdf-print-root.derspdf-dark .user-query-bubble-with-background, #derspdf-print-root.derspdf-dark .query-content, #derspdf-print-root.derspdf-dark [data-message-author-role="user"], #derspdf-print-root.derspdf-dark .user-message-bubble-color { background-color: #161616 !important; border-radius: 12px !important; padding: 8px 12px !important; }
         #derspdf-print-root.derspdf-dark pre, #derspdf-print-root.derspdf-dark code { background-color: #141414 !important; color: #f5f5f5 !important; }
         #derspdf-print-root.derspdf-dark a { color: #38bdf8 !important; }
         @media print {
